@@ -1145,6 +1145,17 @@ input[type="range"] {
         <input type="file" name="additional_docs" accept=".pdf,.doc,.docx,.txt,.xlsx" multiple>
       </label>
     </div>
+    <div class="field-group">
+      <label>Upload Project Photos
+        <span class="hint">Visual inspiration, current site screenshots, mood boards, etc.</span>
+      </label>
+      <label class="file-drop">
+        <div class="icon">📸</div>
+        <div class="main-text">Click to upload or drag & drop</div>
+        <div class="sub-text">JPG, PNG, GIF — Up to 10 MB each</div>
+        <input type="file" name="project_photos" accept=".jpg,.jpeg,.png,.gif" multiple id="photoUpload">
+      </label>
+    </div>
   </div>
 
   <!-- SUBMIT -->
@@ -1228,15 +1239,52 @@ function showToast(msg) {
 }
 
 // ── Form submit handler ──
-document.getElementById('intakeForm').addEventListener('submit', function(e) {
-  // If Formspree is not configured, prevent submission
-  if (this.action.includes('YOUR_FORM_ID')) {
-    e.preventDefault();
-    showToast('⚠️  Please configure your Formspree endpoint first (see HTML comments)');
-    return;
+document.getElementById('intakeForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+
+  const photoInput = document.getElementById('photoUpload');
+  const photos = photoInput?.files;
+  const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbxBBdHOEGQQYhkBOvKiAHDxemq5l6G-cPz7KRqWVChxkykVOeb6GS8HE7q8Sb9MHe3yWQ/exec';
+
+  // Upload photos to Google Drive if any are selected
+  if (photos && photos.length > 0) {
+    showToast('📸 Uploading photos to your Drive…');
+
+    try {
+      for (let i = 0; i < photos.length; i++) {
+        const file = photos[i];
+        const reader = new FileReader();
+
+        reader.onload = async function(e) {
+          const base64 = e.target.result.split(',')[1];
+
+          await fetch(appsScriptUrl, {
+            method: 'POST',
+            payload: {
+              file: base64,
+              fileName: `${Date.now()}_${file.name}`
+            }
+          });
+        };
+
+        reader.readAsDataURL(file);
+      }
+
+      showToast('✓ Photos uploaded! Now sending your brief…');
+    } catch (error) {
+      showToast('⚠️  Photo upload failed, but continuing with form submission…');
+    }
   }
-  // Otherwise let Formspree handle it normally
-  showToast('✓ Submitting your project brief…');
+
+  // Submit the rest of the form to Formspree after a brief delay
+  setTimeout(() => {
+    if (this.action.includes('YOUR_FORM_ID')) {
+      showToast('⚠️  Please configure your Formspree endpoint first (see HTML comments)');
+      return;
+    }
+    showToast('✓ Submitting your project brief…');
+    this.submit();
+  }, 500);
 });
 
 // ── File upload visual feedback ──
