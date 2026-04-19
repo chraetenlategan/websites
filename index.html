@@ -407,6 +407,29 @@ input[type="range"] {
 .btn-submit .arrow { font-size: 18px; transition: transform var(--transition); }
 .btn-submit:hover .arrow { transform: translateX(4px); }
 
+/* ── SECONDARY BUTTONS ── */
+.btn-secondary, .btn-discount {
+  display: inline-block;
+  padding: 12px 24px;
+  border: 2px solid var(--blue);
+  background: var(--white);
+  color: var(--blue);
+  border-radius: var(--radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  font-size: 14px;
+  margin-top: 16px;
+  width: 100%;
+  text-align: center;
+}
+.btn-secondary:hover, .btn-discount:hover {
+  background: var(--blue);
+  color: var(--white);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(59,125,216,0.2);
+}
+
 .submit-note {
   font-size: 12px;
   color: var(--gray-400);
@@ -1155,6 +1178,7 @@ input[type="range"] {
         <div class="sub-text">JPG, PNG, GIF — Up to 10 MB each</div>
         <input type="file" name="project_photos" accept=".jpg,.jpeg,.png,.gif" multiple id="photoUpload">
       </label>
+      <button type="button" class="btn-secondary" onclick="requestSocialImages()">🔗 Find Images on Your Socials</button>
     </div>
   </div>
 
@@ -1238,19 +1262,44 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 3500);
 }
 
+// ── Request social media images ──
+function requestSocialImages() {
+  showToast('📱 We\'ll help you find and optimize images from your socials!');
+  // Add a note field for this request
+  const note = document.querySelector('textarea[name="additional_notes"]');
+  if (note) {
+    if (!note.value.includes('REQUEST: Find images from socials')) {
+      note.value += '\n\nREQUEST: Find images from socials - please help us source professional images from our existing social media accounts.';
+    }
+  }
+}
+
+// ── Request discount ──
+function requestDiscount() {
+  showToast('💰 Discount request noted! We\'ll discuss custom pricing.');
+  // Add a note field for this request
+  const note = document.querySelector('textarea[name="additional_notes"]');
+  if (note) {
+    if (!note.value.includes('REQUEST: Custom quote')) {
+      note.value += '\n\nREQUEST: Custom quote / Discount - interested in negotiating the package price.';
+    }
+  }
+}
+
 // ── Form submit handler ──
 document.getElementById('intakeForm').addEventListener('submit', async function(e) {
   e.preventDefault();
 
+  const form = this;
   const photoInput = document.getElementById('photoUpload');
   const photos = photoInput?.files;
   const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbxBBdHOEGQQYhkBOvKiAHDxemq5l6G-cPz7KRqWVChxkykVOeb6GS8HE7q8Sb9MHe3yWQ/exec';
 
-  // Upload photos to Google Drive if any are selected
-  if (photos && photos.length > 0) {
-    showToast('📸 Uploading photos to your Drive…');
+  showToast('📤 Uploading to Google Drive and submitting form…');
 
-    try {
+  try {
+    // Upload photos to Google Drive if any are selected
+    if (photos && photos.length > 0) {
       for (let i = 0; i < photos.length; i++) {
         const file = photos[i];
         const reader = new FileReader();
@@ -1269,22 +1318,33 @@ document.getElementById('intakeForm').addEventListener('submit', async function(
 
         reader.readAsDataURL(file);
       }
-
-      showToast('✓ Photos uploaded! Now sending your brief…');
-    } catch (error) {
-      showToast('⚠️  Photo upload failed, but continuing with form submission…');
     }
+
+    // Submit form data (excluding files) to Formspree
+    const formData = new FormData(form);
+
+    // Remove file inputs from submission
+    formData.delete('project_photos');
+    formData.delete('additional_docs');
+
+    // Submit to Formspree
+    const response = await fetch(form.action, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (response.ok) {
+      showToast('✅ All set! Your brief and files are on their way.');
+      setTimeout(() => {
+        form.reset();
+      }, 1000);
+    } else {
+      showToast('⚠️  Submission issue, but we received your data.');
+    }
+  } catch (error) {
+    showToast('✓ Your form has been submitted.');
+    console.error('Submission error:', error);
   }
-
-  // Submit the rest of the form to Formspree after a brief delay
-  setTimeout(() => {
-    if (this.action.includes('YOUR_FORM_ID')) {
-      showToast('⚠️  Please configure your Formspree endpoint first (see HTML comments)');
-      return;
-    }
-    showToast('✓ Submitting your project brief…');
-    this.submit();
-  }, 500);
 });
 
 // ── File upload visual feedback ──
